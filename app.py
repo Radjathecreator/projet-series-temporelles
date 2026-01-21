@@ -6,14 +6,12 @@ from statsmodels.tsa.stattools import adfuller
 from statsmodels.tsa.arima.model import ARIMA
 from statsmodels.tsa.statespace.sarimax import SARIMAX
 
-# --- 1. Titre et Introduction ---
 st.title("Analyse et Prédiction de Séries Temporelles")
 st.markdown("""
 Cette application permet de visualiser, analyser et prédire une série temporelle.
 **Auteur :** Radja KURNIAWAN
 """)
 
-# --- 2. Chargement des données ---
 st.sidebar.header("1. Chargement des données")
 uploaded_file = st.sidebar.file_uploader("Charge le fichier CSV ou Excel", type=['csv', 'xlsx'])
 
@@ -27,21 +25,18 @@ if uploaded_file is not None:
             
         st.success("Fichier chargé avec succès !")
         
-        # Sélection des colonnes
         st.sidebar.subheader("Configuration des colonnes")
         all_columns = df.columns.tolist()
         
         col_date = st.sidebar.selectbox("Choisissez la colonne Date", all_columns)
         col_value = st.sidebar.selectbox("Choisissez la colonne Valeur (Série à prédire)", all_columns)
         
-        # Préparation des données
         try:
             df[col_date] = pd.to_datetime(df[col_date])
             df = df.sort_values(by=col_date)
             df.set_index(col_date, inplace=True)
             ts = df[col_value] # La série temporelle
             
-            # --- 3. Visualisation ---
             st.header("2. Visualisation des données")
             st.subheader("Série originale")
             fig, ax = plt.subplots(figsize=(10, 4))
@@ -49,15 +44,13 @@ if uploaded_file is not None:
             ax.set_title("Évolution temporelle")
             st.pyplot(fig)
             
-            # Décomposition STL
             st.subheader("Décomposition STL (Tendance, Saisonnalité, Résidus)")
             # Le paramètre period est important, on laisse l'utilisateur ajuster si besoin
             period = st.sidebar.slider("Périodicité (ex: 12 pour mois, 7 pour jours)", 1, 365, 12)
             res = seasonal_decompose(ts, period=period, model='additive', extrapolate_trend='freq')
             fig_stl = res.plot()
             st.pyplot(fig_stl)
-            
-            # Test de Stationnarité (ADF)
+
             st.subheader("Test de Stationnarité (ADF)")
             adf_result = adfuller(ts.dropna())
             st.write(f"**ADF Statistic:** {adf_result[0]:.4f}")
@@ -67,11 +60,9 @@ if uploaded_file is not None:
             else:
                 st.warning("La série n'est pas stationnaire (p-value >= 0.05).")
 
-            # --- 4 & 5. Modélisation et Prédiction ---
             st.header("3. Modélisation et Prédiction")
             model_type = st.radio("Choisissez le modèle", ["ARIMA", "SARIMA"])
             
-            # Paramètres du modèle
             col1, col2, col3 = st.columns(3)
             p = col1.number_input("p (AR)", 0, 10, 1)
             d = col2.number_input("d (I)", 0, 5, 1)
@@ -90,7 +81,6 @@ if uploaded_file is not None:
                 order = (p, d, q)
                 seasonal_order = None
 
-            # Entraînement
             if st.button("Entraîner le modèle"):
                 with st.spinner("Entraînement en cours..."):
                     if model_type == "ARIMA":
@@ -101,14 +91,11 @@ if uploaded_file is not None:
                     model_fit = model.fit()
                     st.success("Modèle entraîné !")
                     
-                    # Horizon de prédiction
                     horizon = st.number_input("Horizon de prédiction (nombre de pas)", 1, 100, 12)
                     
-                    # Prédiction
                     forecast = model_fit.get_forecast(steps=horizon)
                     forecast_index = pd.date_range(start=ts.index[-1], periods=horizon+1, freq=pd.infer_freq(ts.index))[1:]
                     
-                    # --- 6. Affichage des résultats ---
                     st.header("4. Résultats de la prédiction")
                     
                     pred_series = pd.Series(forecast.predicted_mean.values, index=forecast_index)
